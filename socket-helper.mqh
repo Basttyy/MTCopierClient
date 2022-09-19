@@ -93,8 +93,9 @@ void closeOrder(string strCommand) {
 
 void modifyOrder (string strCommand) {
    string arr[];
+   CJAVal data;
    ushort sep = StringGetCharacter(":",0);
-   int k = StringSplit(strCommand, sep, arr);// results to arr = ["Open",   "Long, "GBPUSD", "Ticket in double", "open price in double", "SL in Double"]
+   int k = StringSplit(strCommand, sep, arr);// results to arr = ["Modify", "Ticket in double", "SL in Double", "TP in Double"]
    
    //Print("Command Close Order");
    int size = ArraySize(_orders_array);
@@ -106,26 +107,70 @@ void modifyOrder (string strCommand) {
          string arr2[];
          StringSplit(_orders_array[ticket_pos],':',arr2);
          int ticket = (int)arr2[1];
-         double lots = (double)arr2[2] >= (double)arr[4] ? (double)arr2[2] : (double)arr[4]; 
-         int type;
-         if (arr[1] == "Long")
-            type = OP_BUY;
-         else if (arr[1] == "Short")
-            type = OP_SELL;
-         else
-            return;
-         if (CloseOrder(arr[2], type, ticket, lots, MagicNumber, _Comment)) {
-            //Print("Closed a ", arr[1], " Order with Lots: ", lots, " and Ticket: ", arr[3]);
-            
-            _orders_array[ticket_pos] = _orders_array[size-1];
-            ArrayResize(_orders_array, size-1);
+         //double lots = (double)arr2[2] >= (double)arr[4] ? (double)arr2[2] : (double)arr[4]; 
+
+         if (ModifyOrder(ticket, arr[2], arr[3])) {
+            Print("Modified a ", arr[1], " Order with Lots: ", lots, " and Ticket: ", arr[3]);
+            data["orderticket"] = OrderTicket();
+            data["orderticket"] = OrderMagicNumber();
+            data["orderticket"] = OrderLots();
+            data["orderticket"] = OrderSymbol();
+            data["orderticket"] = OrderProfit();
+            data["orderticket"] = OrderTypeToString(OrderType());
+            data["orderticket"] = OrderOpenPrice();
+            data["orderticket"] = OrderClosePrice();
+            data["orderticket"] = (string)OrderOpenTime();
+            data["orderticket"] = (string)OrderCloseTime();
+            data["orderticket"] = OrderComment();
+            data["orderticket"] = OrderCommission();
+            data["orderticket"] = OrderStopLoss();
+            data["orderticket"] = OrderTakeProfit();
+            data["orderticket"] = OrderSwap();
          }
       }
+   }
+   string data_str;
+   
+   data_str = data.Serialize();
+   strCommand = "";
+   Base64Encode(data_str, strCommand);
+   Print(strCommand+"\r\n\r\n");
+   Print(data_str+"\r\n");
+   
+   if (glbClientSocket.Send(strCommand)) {
+      Print("sent response to server successfully");
+   } else {
+      Print("unable to send response to the server");
    }
 }
 
 void setTerminalMode (string strCommand) {
-
+   string arr[];
+   CJAVal data;
+   ushort sep = StringGetCharacter(":",0);
+   int k = StringSplit(strCommand, sep, arr);// results to arr = ["SetMode", "Mode as string"]
+   
+   if (arr[1] == "trading_client")
+      _mode = 0;
+   else if (arr[1] == "slave_client")
+      _mode = 1;
+   else if (arr[1] == "master_client")
+      _mode = 2;
+   
+   data["message"] = "client mode set to " + arr[1];
+   
+   string data_str;
+   
+   data_str = data.Serialize();
+   strCommand = "";
+   Base64Encode(data_str, strCommand);
+   Print(strCommand+"\r\n\r\n");
+   Print(data_str+"\r\n");
+   if (glbClientSocket.Send(strCommand)) {
+     Print("sent response to server successfully");
+   } else {
+     Print("unable to send response to the server");
+   }
 }
 
 void getAccountHistory (string strCommand) {
@@ -252,10 +297,14 @@ void getAccountInfo(string strCommand) {
 }
 
 void getOrders(string strCommand) {
+     Print("command get orders");
      string data_str;
-     int k = StringSplit(strCommand, sep, arr);// results to arr = ["Open",   "buy/p_buy_s/p_buy_l/sell/p_sell_s/p_sell_l"]
+     string arr[];
+     ushort sep = StringGetCharacter(":",0);
+     int k = StringSplit(strCommand, sep, arr);// results to arr = ["GetOrders",   "buy/p_buy_s/p_buy_l/sell/p_sell_s/p_sell_l"]
+     int type = arr[1] == "all" ? -1 : StringToOrderType(arr[1]);
      
-     CJAVal data = GetOpenOrders()
+     CJAVal data = GetOpenOrders(type);
      
      data_str = data.Serialize();
      strCommand = "";

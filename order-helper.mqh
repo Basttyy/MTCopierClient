@@ -144,20 +144,37 @@ int OpenSell(string pair,double lot,double sl,double tp,string comment,int magic
          break;
    }
 
-   if(ticket>0) {
-      if(last!=Time[0])
-         ordersThisBar=0;
-      ordersThisBar++;
-      last=Time[0];
+   //if(ticket>0) {
+   //   if(last!=Time[0])
+   //      ordersThisBar=0;
+   //   ordersThisBar++;
+   //   last=Time[0];
       //Print("Order Sell was opened");
       // AddSpreadCheckFor(pair);
-   }
+   //}
    return (ticket);
 }
 
-bool ModifyOrder(int orderTicket, double orderOpenPrice, double sl, double tp)
+bool ModifyOrder(int orderTicket, double sl, double tp)
 {
-   return true;
+   bool stat = false;
+   if (sl == 0)
+      sl = OrderStopLoss();
+   if (tp == 0)
+      tp = OrderTakeProfit();
+
+   if(OrderSelect(ticket,SELECT_BY_TICKET)) {
+      while(tries<10) {
+         WaitTradeContext();
+         RefreshRates();
+         if(OrderModify(OrderTicket(),OrderOpenPrice(),NormalizeDouble(sl,digits),NormalizeDouble(tp,digits),0)) {
+            stat = true;
+            break;
+         }
+         tries++;
+      }
+   }
+   return stat;
 }
 
 //+------------------------------------------------------------------+
@@ -189,7 +206,7 @@ CJAVal GetOpenOrders(int type = -1)
    bool add = false;
    for(int b=0; b<=total-1; b++) {
       if(OrderSelect(b,SELECT_BY_POS,MODE_TRADES)) {
-         if (type == -1) {
+         if (type < 0) {
             add = true;
          } else if (OrderType() == type) {
             add = true;
@@ -203,8 +220,8 @@ CJAVal GetOpenOrders(int type = -1)
             data[j]["orderticket"] = OrderTypeToString(OrderType());
             data[j]["orderticket"] = OrderOpenPrice();
             data[j]["orderticket"] = OrderClosePrice();
-            data[j]["orderticket"] = OrderOpenTime();
-            data[j]["orderticket"] = OrderCloseTime();
+            data[j]["orderticket"] = (string)OrderOpenTime();
+            data[j]["orderticket"] = (string)OrderCloseTime();
             data[j]["orderticket"] = OrderComment();
             data[j]["orderticket"] = OrderCommission();
             data[j]["orderticket"] = OrderStopLoss();

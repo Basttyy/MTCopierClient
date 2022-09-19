@@ -33,6 +33,7 @@ input bool _ECN = true;                 // Is account ECN
 input double _MaxSlippage = 3;           // Maximum Slippage
 input string _Comment = "basttyydev@gmail.com";
 input int MagicNumber=321123; // Magic Number
+input int Mode=0;                   //0 for slave_mode and 1 for master_mode
 
 // --------------------------------------------------------------------
 // Global variables and constants
@@ -41,3 +42,4 @@ input int MagicNumber=321123; // Magic Number
 ClientSocket * glbClientSocket = NULL;
 
 string _orders_array[];
+int _mode = Mode;

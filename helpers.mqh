@@ -113,6 +113,27 @@ string OrderTypeToString(int type) {
    return resp;
 }
 
+bool MarketOpen(string symbol = "")
+{
+   symbol = symbol == "" ? Symbol() : symbol;
+   
+   if((MarketInfo(symbol, MODE_TRADEALLOWED))>0) {
+      Print(" Market is Open and Trade is Allowed on This Symbol.");
+      return true;
+   }
+   else {
+      Print ("Trade is not Allowed on This Symbol RightNow.");
+      return false;
+   }
+
+//Combination of the three methods below works on mt4 and mt5   
+//SymbolInfoSessionTrade() => to find the last session start/end time
+
+//SymbolInfoInteger(_Symbol,SYMBOL_TIME) => to find out the last known tick time for the symbol
+
+//TimeCurrent() and TerminalInfoInteger(TERMINAL_CONNECTED) => to find out if the server is "ON"
+}
+
 int StringToOrderType(string type) {
    if (type == "buy")
       return OP_BUY;
