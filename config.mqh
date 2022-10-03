@@ -20,6 +20,9 @@
 // --------------------------------------------------------------------
 // EA user inputs
 // --------------------------------------------------------------------
+#define MASTER_CLIENT 1
+#define SLAVE_CLIENT 0
+#define TRADING_CLIENT 2
 
 input string   Hostname = "localhost";    // Server hostname or IP address
 input ushort   ServerPort = 23456;        // Server port
@@ -33,7 +36,7 @@ input bool _ECN = true;                 // Is account ECN
 input double _MaxSlippage = 3;           // Maximum Slippage
 input string _Comment = "basttyydev@gmail.com";
 input int MagicNumber=321123; // Magic Number
-input int Mode=0;                   //0 for slave_mode and 1 for master_mode
+input int Mode=0;                   //0 for slave_client, 1 for master_client and 2 for trading_client 
 
 // --------------------------------------------------------------------
 // Global variables and constants
@@ -42,4 +45,5 @@ input int Mode=0;                   //0 for slave_mode and 1 for master_mode
 ClientSocket * glbClientSocket = NULL;
 
 string _orders_array[];
+string _copier_slaves[];
 int _mode = Mode;

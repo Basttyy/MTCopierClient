@@ -158,12 +158,14 @@ int OpenSell(string pair,double lot,double sl,double tp,string comment,int magic
 bool ModifyOrder(int orderTicket, double sl, double tp)
 {
    bool stat = false;
+   int tries = 0;
    if (sl == 0)
       sl = OrderStopLoss();
    if (tp == 0)
       tp = OrderTakeProfit();
 
-   if(OrderSelect(ticket,SELECT_BY_TICKET)) {
+   if(OrderSelect(orderTicket,SELECT_BY_TICKET)) {
+      int digits=(int)MarketInfo(OrderSymbol(),MODE_DIGITS);
       while(tries<10) {
          WaitTradeContext();
          RefreshRates();
@@ -213,21 +215,23 @@ CJAVal GetOpenOrders(int type = -1)
          }
          if (add) {
             data[j]["orderticket"] = OrderTicket();
-            data[j]["orderticket"] = OrderMagicNumber();
-            data[j]["orderticket"] = OrderLots();
-            data[j]["orderticket"] = OrderSymbol();
-            data[j]["orderticket"] = OrderProfit();
-            data[j]["orderticket"] = OrderTypeToString(OrderType());
-            data[j]["orderticket"] = OrderOpenPrice();
-            data[j]["orderticket"] = OrderClosePrice();
-            data[j]["orderticket"] = (string)OrderOpenTime();
-            data[j]["orderticket"] = (string)OrderCloseTime();
-            data[j]["orderticket"] = OrderComment();
-            data[j]["orderticket"] = OrderCommission();
-            data[j]["orderticket"] = OrderStopLoss();
-            data[j]["orderticket"] = OrderTakeProfit();
-            data[j]["orderticket"] = OrderSwap();
+            data[j]["ordermagicnumber"] = OrderMagicNumber();
+            data[j]["orderlots"] = OrderLots();
+            data[j]["ordersymbol"] = OrderSymbol();
+            data[j]["orderprofit"] = OrderProfit();
+            data[j]["ordertype"] = OrderTypeToString(OrderType());
+            data[j]["orderopenprice"] = OrderOpenPrice();
+            data[j]["ordercloseprice"] = OrderClosePrice();
+            data[j]["orderopentime"] = (string)OrderOpenTime();
+            data[j]["orderclosetime"] = (string)OrderCloseTime();
+            data[j]["ordercomment"] = OrderComment();
+            data[j]["ordercommission"] = OrderCommission();
+            data[j]["orderstoploss"] = OrderStopLoss();
+            data[j]["ordertakeprofit"] = OrderTakeProfit();
+            data[j]["orderswap"] = OrderSwap();
+            j++;
          }
+         add = false;
       }
    }
    return data;
