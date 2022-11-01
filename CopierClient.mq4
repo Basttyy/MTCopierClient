@@ -7,6 +7,7 @@
 
 void OnInit() {
    EventSetMillisecondTimer(TIMER_FREQUENCY_MS);
+   initGlobals();
 }
 
 // --------------------------------------------------------------------
@@ -32,9 +33,11 @@ void OnTick()
    if (!glbClientSocket) {
       glbClientSocket = new ClientSocket(Hostname, ServerPort);
       if (glbClientSocket.IsSocketConnected()) {
-         glbClientSocket.Send((string)AccountNumber()+AccountName());
-         Print("Client connection succeeded");
+         //glbClientSocket.Send((string)AccountNumber()+AccountName());
          Sleep(5);
+         glbClientSocket.Send((string)AccountNumber()+"\n");
+         Sleep(5);
+         Print("Client connection succeeded");
       } else {
          Print("Client connection failed");
       }
@@ -61,7 +64,9 @@ void OnTimer()
    if (!glbClientSocket) {
       glbClientSocket = new ClientSocket(Hostname, ServerPort);
       if (glbClientSocket.IsSocketConnected()) {
-         glbClientSocket.Send((string)AccountNumber()+AccountName());
+         //glbClientSocket.Send((string)AccountNumber()+AccountName());
+         Sleep(5);
+         glbClientSocket.Send((string)AccountNumber()+"\n");
          Print("Client connection succeeded");
          Sleep(5);
       } else {

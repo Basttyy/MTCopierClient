@@ -27,6 +27,8 @@
 input string   Hostname = "localhost";    // Server hostname or IP address
 input ushort   ServerPort = 23456;        // Server port
 input string Pairs = "XAUUSD,GBPUSD,EURUSD,USDCHF,USDJPY,NZDUSD,GBPJPY,AUDJPY,AUDUSD";     // Can add more pairs with comma (,) separation
+input string PairPrefix = "";
+input string PairSuffix = "";
 input double SlBuff = 4;                 // SL addition for trade signals
 input double FixedLotSize = 0.0;          // Set to zero to deactivate
 input double LotsPer100Usd = 0.01;        // Lot size to increment per 100usd
@@ -41,6 +43,21 @@ input int Mode=0;                   //0 for slave_client, 1 for master_client an
 // --------------------------------------------------------------------
 // Global variables and constants
 // --------------------------------------------------------------------
+
+string   hostname;
+ushort   server_port;
+string pairs;
+string pair_prefix;
+string pair_suffix;
+double slbuff;
+double fixedlotsize;
+double lotsper100usd;
+double minlots;
+double maxlots;
+bool _ecn;
+double _maxslippage;
+string _comment;
+int magicnumber;
 
 ClientSocket * glbClientSocket = NULL;
 

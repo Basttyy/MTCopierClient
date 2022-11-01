@@ -3,7 +3,7 @@
 void HandleIncomingData() {
    string strCommand;
    do {
-      strCommand = glbClientSocket.Receive("\r\n");
+      strCommand = glbClientSocket.Receive("\n");
       if (StringFind(strCommand, "Open:") > -1) {
          openOrder(strCommand);
       }
@@ -31,6 +31,12 @@ void HandleIncomingData() {
       else if (StringFind(strCommand, "GetOrders:") > -1) {
          getOrders(strCommand);
       }
+      else if (StringFind(strCommand, "SetSettings:") > -1) {
+         setSettings(strCommand);
+      }
+      else if (StringFind(strCommand, "GetSettings:") > -1) {
+         getSettings(strCommand);
+      }
       else if (StringFind(strCommand, "Hi") > -1 || StringFind(strCommand, "welcome") > -1) {
          Print(strCommand);
       }
@@ -48,11 +54,11 @@ void openOrder (string strCommand) {
    double lots = GetLot();
    if (arr[1] == "buy") {
       //Print("Buy Order with SL: ", GetSL(OP_BUY, (double)arr[5], arr[2]), " and Lot: ", lots);
-      ticket = OpenBuy(arr[2], lots, GetSL(OP_BUY, (double)arr[5]),GetTP(OP_BUY, (double)arr[6]),_Comment,MagicNumber,false,0,0);
+      ticket = OpenBuy(addPairPrefixSuffix(arr[2]), lots, GetSL(OP_BUY, (double)arr[5]),GetTP(OP_BUY, (double)arr[6]),_Comment,MagicNumber,false,0,0);
       
    } else if (arr[1] == "sell") {
       //Print("Sell Order with SL: ", GetSL(OP_SELL, (double)arr[5], arr[2]), " and Lot: ", lots);
-      ticket = OpenSell(arr[2], lots, GetSL(OP_SELL, (double)arr[5]),GetTP(OP_BUY, (double)arr[6]),_Comment,MagicNumber,false,0,0);
+      ticket = OpenSell(addPairPrefixSuffix(arr[2]), lots, GetSL(OP_SELL, (double)arr[5]),GetTP(OP_BUY, (double)arr[6]),_Comment,MagicNumber,false,0,0);
    } else if (StringFind(arr[1], "p_") > -1) {
       
    }
@@ -70,6 +76,12 @@ void openOrder (string strCommand) {
    if (!OrderSelect(ticket, SELECT_BY_TICKET)) {
       data["message"] = "order opened but couldn't get order info";
       SendJsonResponse(data);
+      if (_mode == MASTER_CLIENT) {
+         data.Clear();
+         data["command"] = arr[0]+":"+arr[1]+":"+removePairPrefixSuffix(arr[2])+":"+(string)ticket+":"+arr[4]+":"+arr[5]+":"+arr[6]+":"+arr[7]+":"+arr[8];
+         data["clients"] = ConvertArrayToCJAVal(_copier_slaves);
+         SendJsonResponse(data);
+      }
       return ;
    }
    data["orderticket"] = OrderTicket();
@@ -88,7 +100,13 @@ void openOrder (string strCommand) {
    data["ordertakeprofit"] = OrderTakeProfit();
    data["orderswap"] = OrderSwap();
    
-   SendJsonResponse(data);
+   SendJsonResponse(data); 
+   if (_mode == MASTER_CLIENT) {
+      data.Clear();
+      data["command"] = arr[0]+":"+arr[1]+":"+removePairPrefixSuffix(arr[2])+":"+(string)ticket+":"+arr[4]+":"+arr[5]+":"+arr[6]+":"+arr[7]+":"+arr[8];
+      data["clients"] = ConvertArrayToCJAVal(_copier_slaves);
+      SendJsonResponse(data, "copytrade");
+   }
    return ;
 }
 
@@ -107,7 +125,7 @@ void closeOrder(string strCommand) {
       return ;
    }
    
-   int ticket_pos = SearchArray(_orders_array, arr[3] + ":",true);
+   int ticket_pos = SearchArray(_orders_array, arr[3], size, true);
    
    if (ticket_pos < 0) {
       data["message"] = "order with ticket " + arr[3] + " does not exist in the list";
@@ -126,7 +144,7 @@ void closeOrder(string strCommand) {
       type = OP_SELL;
    else
       return;
-   if (!CloseOrder(arr[2], type, ticket, lots, MagicNumber, _Comment)) {
+   if (!CloseOrder(addPairPrefixSuffix(arr[2]), type, ticket, lots, MagicNumber, _Comment)) {
       data["message"] = "unable to close order with ticket " + arr[3];
       SendJsonResponse(data);
       return ;
@@ -139,6 +157,12 @@ void closeOrder(string strCommand) {
    
    data["message"] = "close order with ticket " + arr[3] + " successfully";
    SendJsonResponse(data);
+   if (_mode == MASTER_CLIENT) {
+      data.Clear();
+      data["command"] = arr[0]+":"+arr[1]+":"+removePairPrefixSuffix(arr[2])+":"+(string)ticket+":"+DoubleToString(lots);
+      data["clients"] = ConvertArrayToCJAVal(_copier_slaves);
+      SendJsonResponse(data, "copytrade");
+   }
    return ;
 }
 
@@ -157,7 +181,7 @@ void modifyOrder (string strCommand) {
       return ;
    }
    
-   int ticket_pos = SearchArray(_orders_array, arr[1] + ":",true);
+   int ticket_pos = SearchArray(_orders_array, arr[1], size, true);
    
    if (ticket_pos < 0) {
       data["message"] = "order with ticket " + arr[1] + " does not exist in the list";
@@ -194,9 +218,16 @@ void modifyOrder (string strCommand) {
    data["orderswap"] = OrderSwap();
    
    SendJsonResponse(data);
+   if (_mode == MASTER_CLIENT) {
+      data.Clear();
+      data["command"] = arr[0]+":"+(string)ticket+":"+arr[2]+":"+arr[3];
+      data["clients"] = ConvertArrayToCJAVal(_copier_slaves);
+      SendJsonResponse(data, "copytrade");
+   }
 }
 
 void setTerminalMode (string strCommand) {
+   Print("got to set terminal mode");
    string arr[];
    CJAVal data;
    if (OrdersTotal() < 1) {
@@ -218,18 +249,7 @@ void setTerminalMode (string strCommand) {
       data["message"] = "unable to change client mode please close open trades first";
    }
    
-   string data_str;
-   
-   data_str = data.Serialize();
-   strCommand = "";
-   Base64Encode(data_str, strCommand);
-   Print(strCommand+"\r\n\r\n");
-   Print(data_str+"\r\n");
-   if (glbClientSocket.Send(strCommand)) {
-     Print("sent response to server successfully");
-   } else {
-     Print("unable to send response to the server");
-   }
+   SendJsonResponse(data);
 }
 
 void addSlaveClient (string strCommand) {
@@ -242,17 +262,19 @@ void addSlaveClient (string strCommand) {
       return ;
    }
    
+   ushort sep = StringGetCharacter(":",0);
+   int k = StringSplit(strCommand, sep, arr);// results to arr = ["AddSlave", "ClientID as string"]
+   
    if (ArraySize(arr) < 2) {
       data["message"] = "request parameters are incomplete";
       SendJsonResponse(data);
       return ;
    }
    
-   ushort sep = StringGetCharacter(":",0);
-   int k = StringSplit(strCommand, sep, arr);// results to arr = ["AddSlave", "ClientID as string"]
+   int pos = SearchArray(_copier_slaves, arr[1], ArraySize(_copier_slaves));
    
-   if (SearchArray(_copier_slaves, arr[1]) > -1) {
-      data["message"] = "this client has already been add to the copy list";
+   if (pos > -1) {
+      data["message"] = "this client has already been added to the copy list";
       SendJsonResponse(data);
       return ;
    }
@@ -276,26 +298,26 @@ void removeSlaveClient (string strCommand) {
       return ;
    }
    
+   ushort sep = StringGetCharacter(":",0);
+   int k = StringSplit(strCommand, sep, arr);// results to arr = ["AddSlave", "ClientID as string"]
+   
    if (ArraySize(arr) < 2) {
       data["message"] = "request parameters are incomplete";
       SendJsonResponse(data);
       return ;
    }
    
-   ushort sep = StringGetCharacter(":",0);
-   int k = StringSplit(strCommand, sep, arr);// results to arr = ["AddSlave", "ClientID as string"]
-   
-   int client_pos = SearchArray(_copier_slaves, arr[1]);
+   int client_pos = SearchArray(_copier_slaves, arr[1], ArraySize(_copier_slaves));
+   int sz = ArraySize(_copier_slaves);
    
    if (client_pos < 0) {
-      data["message"] = "this client does not exist the copy list";
+      data["message"] = "this client does not exist in the copy list";
       SendJsonResponse(data);
       return ;
    }
    
-   int sz = ArraySize(_copier_slaves);
-   _copier_slaves[sz] = _copier_slaves[sz - 1];
-   ArrayResize(_orders_array, sz - 1);
+   _copier_slaves[client_pos] = _copier_slaves[sz - 1];
+   ArrayResize(_copier_slaves, sz - 1);
    
    data["message"] = "slave client removed successfully";
    SendJsonResponse(data);
@@ -308,7 +330,8 @@ void getAccountHistory (string strCommand) {
    
      // retrieving info from trade history
    int i,j=0,hstTotal=OrdersHistoryTotal();
-   if (hstTotal > 0 && arr[1] == (string)AccountNumber()+AccountName()) {  //ensure that the username and account id sent corresponds
+   //if (hstTotal > 0 && arr[1] == (string)AccountNumber()+AccountName()) {  //ensure that the username and account id sent corresponds
+   if (hstTotal > 0 && arr[1] == (string)AccountNumber()) {  //ensure that the username and account id sent corresponds
      CJAVal data; bool found = false;
      string ticket, opentime, type, lots, symbol, openprice, sl, tp, closetime, closeprice, swap, profit;
      
@@ -365,22 +388,7 @@ void getAccountHistory (string strCommand) {
            j++;
         }
      }
-     string data_str;
-     
-     data_str = data.Serialize();
-     strCommand = "";
-     Base64Encode(data_str, strCommand);
-     Print(strCommand+"\r\n\r\n");
-     Print(data_str+"\r\n");
-     if (glbClientSocket.Send(strCommand)) {
-        Print("sent response to server successfully");
-     } else {
-        Print("unable to send response to the server");
-     }
-     /*while (!glbClientSocket.Send(data_str) && j < 5) {
-         ++j;
-         Sleep(50);
-     }*/
+     SendJsonResponse(data);
    }
 }
 
@@ -397,23 +405,11 @@ void getAccountInfo(string strCommand) {
    data["account_company"] = AccountCompany();
    data["account_currency"] = AccountCurrency();
    
-   string data_str;
-   
-   data_str = data.Serialize();
-   strCommand = "";
-   Base64Encode(data_str, strCommand);
-   Print(strCommand+"\r\n\r\n");
-   Print(data_str+"\r\n");
-   if (glbClientSocket.Send(strCommand)) {
-     Print("sent response to server successfully");
-   } else {
-     Print("unable to send response to the server");
-   }
+   SendJsonResponse(data);
 }
 
 void getOrders(string strCommand) {
      Print("command get orders");
-     string data_str;
      string arr[];
      ushort sep = StringGetCharacter(":",0);
      int k = StringSplit(strCommand, sep, arr);// results to arr = ["GetOrders",   "buy/p_buy_s/p_buy_l/sell/p_sell_s/p_sell_l"]
@@ -421,14 +417,78 @@ void getOrders(string strCommand) {
      
      CJAVal data = GetOpenOrders(type);
      
-     data_str = data.Serialize();
-     strCommand = "";
-     Base64Encode(data_str, strCommand);
-     Print(strCommand+"\r\n\r\n");
-     Print(data_str+"\r\n");
-     if (glbClientSocket.Send(strCommand)) {
-        Print("sent response to server successfully");
-     } else {
-        Print("unable to send response to the server");
-     }
+     SendJsonResponse(data);
+}
+
+void getSettings(string strCommand) {
+   CJAVal data;
+   
+   data["hostname"] = hostname;
+   data["serverport"] = (string)server_port;
+   data["pairs"] = pairs;
+   data["slbuff"] = slbuff;
+   data["fixedlotsize"] = fixedlotsize;
+   data["lotsper100usd"] = lotsper100usd;
+   data["minlots"] = minlots;
+   data["maxlots"] = maxlots;
+   data["ecn"] = _ecn;
+   data["maxslippage"] = _maxslippage;
+   data["comment"] = _comment;
+   data["magicnumber"] = magicnumber;
+   if (_mode == 0)  //0 for slave_client, 1 for master_client and 2 for trading_client 
+      data["mode"] = "slave_client";
+   else if (_mode == 1)
+      data["mode"] = "master_client";
+   else if (_mode == 2)
+      data["mode"] = "trading_client";
+   
+   SendJsonResponse(data);
+}
+
+void setSettings(string strCommand) {
+   string arr[];
+   CJAVal data;
+   if (OrdersTotal() < 1) {      
+      ushort sep = StringGetCharacter(":",0);
+      int k = StringSplit(strCommand, sep, arr);// results to arr = ["SetMode", "hostname", "serverport", "pairs", "slbuff", "fixedlotsize", "lotsper100usd", "minlots", "maxlots", "ecn", "maxslippage", "comment", "magicnumber", "mode"]
+      
+      if (arr[1] != "*")
+         hostname = arr[1];
+      if (arr[2] != "*")
+         server_port = (ushort)StrToDouble(arr[2]);
+      if (arr[3] != "*")
+         pairs = arr[3];
+      if (arr[4] != "*")
+         slbuff = StringToDouble(arr[4]);
+      if (arr[5] != "*")
+         fixedlotsize = StringToDouble(arr[5]);
+      if (arr[6] != "*")
+         lotsper100usd = StringToDouble(arr[6]);
+      if (arr[7] != "*")
+         minlots = StringToDouble(arr[7]);
+      if (arr[8] != "*")
+         maxlots = (double)arr[8];
+      if (arr[9] != "*")
+         _ecn = (bool)StrToInteger(arr[9]);
+      if (arr[10] != "*")
+         _maxslippage = StringToDouble(arr[10]);
+      if (arr[11] != "*")
+         _comment = arr[11];
+      if (arr[12] != "*")
+         magicnumber = StrToInteger(arr[12]);
+      if (arr[13] != "*") {         
+         if (arr[13] == "slave_client")  //0 for slave_client, 1 for master_client and 2 for trading_client 
+            _mode = 0;
+         else if (arr[13] == "master_client")
+            _mode = 1;
+         else if (arr[13] == "trading_client")
+            _mode = 2;
+      }
+
+      data["message"] = "client settings updated successfully";
+   } else {
+      data["message"] = "unable to change client mode please close open trades first";
+   }
+   
+   SendJsonResponse(data);
 }

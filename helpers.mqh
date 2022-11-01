@@ -1,24 +1,30 @@
 #include "config.mqh"
 
 // seach an array for a string or substring
-int SearchArray(string &arr[], string needle, bool substr = false)
+int SearchArray(string &arr[], string needle, int len, bool substr = false)
 {
-   int len = ArraySize(arr);
+   Print("got to searcharray");
+   Print("legth is: " + IntegerToString(len));
    for (int i = 0; i < len; i++) {
-      if (substr)
-         if (StringFind(arr[i], needle) > -1)
+      Print("Executing for loop");
+      if (substr) {
+         Print(arr[i]);
+         Print(needle);
+         if (StringFind(arr[i], needle) > -1) {
             return i;
-      else
+         }
+      }
+      else {
          if (arr[i] == needle)
             return i;
+      }
    }
    return -1;
 }
 
 // seach an array of integer
-int SearchArray(int &arr[], int needle)
+int SearchArray(int &arr[], int needle, int len)
 {
-   int len = ArraySize(arr);
    for (int i = 0; i < len; i++) {
       if (arr[i] == needle)
          return i;
@@ -27,9 +33,8 @@ int SearchArray(int &arr[], int needle)
 }
 
 // seach an array of double
-int SearchArray(double &arr[], double needle)
+int SearchArray(double &arr[], double needle, int len)
 {
-   int len = ArraySize(arr);
    for (int i = 0; i < len; i++) {
       if (arr[i] == needle)
          return i;
@@ -37,20 +42,34 @@ int SearchArray(double &arr[], double needle)
    return -1;
 }
 
-void SendJsonResponse(CJAVal &data)
+void SendJsonResponse(CJAVal &data, string append_str = "")
 {
    string data_str;
    string strCommand = "";
+   string message = "";
    
    data_str = data.Serialize();
    Base64Encode(data_str, strCommand);
-   Print(strCommand+"\r\n\r\n");
-   Print(data_str+"\r\n");
-   if (glbClientSocket.Send(strCommand)) {
+   //Print(strCommand+"\r\n\r\n");
+   //Print(data_str+"\r\n");
+   message = append_str + strCommand + "\n";
+   Print(message);
+   if (glbClientSocket.Send(message)) {
      Print("sent response to server successfully");
    } else {
      Print("unable to send response to the server");
    }  
+}
+
+CJAVal ConvertArrayToCJAVal(string &data[])
+{
+   CJAVal resp;
+   int sz = ArraySize(data);
+   for (int i = 0; i < sz; i++) {
+      resp[i] = data[i];
+   }
+   
+   return resp;
 }
 
 double GetLot()
@@ -86,6 +105,19 @@ double GetTP(int type, double tp, string symbol=NULL)
       tp = tp - SlBuff * GetPip(symbol);
    }
    return tp;
+}
+
+string addPairPrefixSuffix(string pair)
+{
+   return pair_prefix + pair + pair_suffix;
+}
+
+string removePairPrefixSuffix(string pair)
+{
+   StringReplace(pair, pair_prefix, "");
+   StringReplace(pair, pair_suffix, "");
+   
+   return pair;
 }
 
 //+------------------------------------------------------------------+
@@ -220,6 +252,24 @@ void WaitTradeContext()
       //Print("Trade context free!");
    }
 //Print("leave WaitTradeContext");
+}
+
+void initGlobals()
+{
+   hostname = Hostname;
+   server_port = ServerPort;
+   pairs = Pairs;
+   pair_prefix = PairPrefix;
+   pair_suffix = PairSuffix;
+   slbuff = SlBuff;
+   fixedlotsize = FixedLotSize;
+   lotsper100usd = LotsPer100Usd;
+   minlots = MinLots;
+   maxlots = MaxLots;
+   _ecn = _ECN;
+   _maxslippage = _MaxSlippage;
+   _comment = _Comment;
+   magicnumber = MagicNumber;
 }
 
 string err_msg(int e)
