@@ -4,6 +4,7 @@ void HandleIncomingData() {
    string strCommand;
    do {
       strCommand = glbClientSocket.Receive("\n");
+
       if (StringFind(strCommand, "Open:") > -1) {
          openOrder(strCommand);
       }
@@ -37,10 +38,9 @@ void HandleIncomingData() {
       else if (StringFind(strCommand, "GetSettings:") > -1) {
          getSettings(strCommand);
       }
-      else if (StringFind(strCommand, "Hi") > -1 || StringFind(strCommand, "welcome") > -1) {
+      else if (StringFind(strCommand, "Hi") > -1 || StringFind(strCommand, "Hello World!") > -1) {
          Print(strCommand);
       }
-      
    } while (strCommand != "");
 }
 
